@@ -9,5 +9,15 @@
         android:id="@+id/homFragment"
         android:name="com.example.a641.HomFragment"
         android:label="fragment_hom"
-        tools:layout="@layout/fragment_hom" />
+        tools:layout="@layout/fragment_hom" >
+        <action
+            android:id="@+id/action_homFragment_to_smsFragment"
+            app:destination="@id/smsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/smsFragment"
+        android:name="com.example.a641.smsFragment"
+        android:label="fragment_sms"
+        tools:layout="@layout/fragment_sms" />
+
 </navigation>

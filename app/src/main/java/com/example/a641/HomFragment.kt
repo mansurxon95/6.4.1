@@ -3,9 +3,10 @@ package com.example.a641
 
 import android.app.AlertDialog
 import android.content.ContentResolver
-import android.content.ContentUris
+import android.content.Context
 import android.content.Intent
-import android.database.Observable
+import android.content.pm.PackageManager
+import android.database.Cursor
 import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
@@ -14,17 +15,18 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ListView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+import com.example.a641.databinding.FragmentHomBinding
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
-import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.RecyclerView
-import com.example.a641.databinding.FragmentHomBinding
 import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator
 import java.util.Collections
 
@@ -45,6 +47,7 @@ class HomFragment : Fragment() {
     private var param2: String? = null
     lateinit var binding: FragmentHomBinding
     lateinit var adapterrv: Adapterrv
+    lateinit var list:ArrayList<Contact>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,12 +57,30 @@ class HomFragment : Fragment() {
         }
     }
 
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View? {
 
         binding = FragmentHomBinding.inflate(inflater,container,false)
+
+        list = ArrayList()
+
+        if (!checkReadContactsPermission(binding.root.context)) {
+        requestPermissions()
+        }else{
+
+            list.addAll(getContacts())
+
+        }
+
+
+
+
+
+
+
 
         adapterrv = Adapterrv(object : Adapterrv.OnClik{
             override fun clickmenu(contact: Contact, btn: View) {
@@ -68,6 +89,9 @@ class HomFragment : Fragment() {
 
             override fun clickcall(contact: Contact) {
                 super.clickcall(contact)
+
+                Toast.makeText(binding.root.context, "salom", Toast.LENGTH_SHORT).show()
+
             }
 
             override fun clicksms(contact: Contact) {
@@ -77,18 +101,25 @@ class HomFragment : Fragment() {
 
         })
 
-        var list = ArrayList<Contact>()
-        list.add(Contact(1,"mansur","+79781964731"))
-        list.add(Contact(2,"mansur","+79781964731"))
-        list.add(Contact(3,"mansur","+79781964731"))
-        list.add(Contact(4,"mansur","+79781964731"))
-        list.add(Contact(5,"mansur","+79781964731"))
-        list.add(Contact(6,"mansur","+79781964731"))
-        list.add(Contact(7,"mansur","+79781964731"))
         binding.rvView.adapter = adapterrv
         adapterrv.submitList(list)
 
-        var itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT or ItemTouchHelper.LEFT){
+        swipe()
+
+
+
+
+
+
+        return binding.root
+    }
+
+
+
+
+    fun swipe(){
+        var itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.RIGHT or ItemTouchHelper.LEFT){
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -105,8 +136,20 @@ class HomFragment : Fragment() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
 
-            }
+                if (direction == 8) {
+                    var bundle = Bundle()
+                    bundle.putSerializable("key", list[viewHolder.adapterPosition])
+                    findNavController().navigate(R.id.action_homFragment_to_smsFragment, bundle)
+                }
 
+                if (direction == 4) {
+
+                    val callIntent = Intent(Intent.ACTION_CALL)
+                    callIntent.data = Uri.parse("tel:${list[viewHolder.adapterPosition].phone_number}")
+                    startActivity(callIntent)
+                    adapterrv.notifyDataSetChanged()
+                }
+            }
 
             override fun onChildDraw(
                 c: Canvas,
@@ -139,8 +182,8 @@ class HomFragment : Fragment() {
                             R.color.call_color
                         )
                     )
-                    .addSwipeLeftActionIcon(R.drawable.group)
-                    .addSwipeLeftActionIcon(R.drawable.frame)
+                    .addSwipeRightActionIcon(R.drawable.group)
+                    .addSwipeLeftActionIcon(R.drawable.baseline_call_24)
                     .create()
                     .decorate()
 
@@ -156,131 +199,149 @@ class HomFragment : Fragment() {
             }
 
         }).attachToRecyclerView(binding.rvView)
-
-        return binding.root
     }
 
-//    fun myMethod() {
-//            askPermission(android.Manifest.permission.READ_CONTACTS, android.Manifest.permission.ACCESS_FINE_LOCATION) {
-//                //all permissions already granted or just granted
-//                //your action
-//                resultView.setText("Accepted :${it.accepted}")
-//            }.onDeclined { e ->
-//                if (e.hasDenied()) {
-//                    AppendText.appendText(resultView, "Denied :")
-//                    //the list of denied permissions
-//                    e.denied.forEach {
-//                        AppendText.appendText(resultView, it)
-//                    }
-//
-//                    AlertDialog.Builder(requireContext())
-//                        .setMessage("Please accept our permissions")
-//                        .setPositiveButton("yes") { dialog, which ->
-//                            e.askAgain();
-//                        } //ask again
-//                        .setNegativeButton("no") { dialog, which ->
-//                            dialog.dismiss();
-//                        }
-//                        .show();
-//                }
-//
-//                if (e.hasForeverDenied()) {
-//                    AppendText.appendText(resultView, "ForeverDenied :")
-//                    //the list of forever denied permissions, user has check 'never ask again'
-//                    e.foreverDenied.forEach {
-//                        AppendText.appendText(resultView, it)
-//                    }
-//                    // you need to open setting manually if you really need it
-//                    e.goToSettings();
-//                }
-//            }
-//        }
+
+    fun getContacts(): List<Contact> {
+        val contacts = mutableListOf<Contact>()
+        val contentResolver: ContentResolver = binding.root.context.contentResolver
+        val cursor: Cursor? = contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            null,
+            null,
+            null,
+            null
+        )
+
+        if (cursor != null && cursor.count > 0) {
+            while (cursor.moveToNext()) {
 
 
+                val contactId =
+                    cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID))
+                val contactName =
+                    cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME))
 
-//        fun getNamePhoneDetails(): ArrayList<List<String>>? {
-//            val names = ArrayList<List<String>>()
-//            val cr = binding.root.context.contentResolver
-//            val cur = cr.query(
-//                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-//                    ContactsContract.CommonDataKinds.Phone.NUMBER ),
-//                null, null, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-//
-//                while (cur!!.moveToNext()) {
-//                    val id = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NAME_RAW_CONTACT_ID))
-//                        val name = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
-//                    val number = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
-//                    names.add(listOf(id, name, number))
-//                }
-//
-//            return names
-//        }
+                val contactNumbers = getContactNumbers(contactId)
 
+                val contact = Contact(contactId.toInt(), contactName, contactNumbers.toString())
+                contacts.add(contact)
+            }
+            cursor.close()
+        }
 
-        private fun requestPermissions() {
-            // below line is use to request permission in the current activity.
-            // this method is use to handle error in runtime permissions
-            Dexter.withContext(binding.root.context)
-                // below line is use to request the number of permissions which are required in our app.
-                .withPermissions(android.Manifest.permission.WRITE_CONTACTS,
-                    // below is the list of permissions
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.READ_CONTACTS)
-                // after adding permissions we are calling an with listener method.
-                .withListener(object : MultiplePermissionsListener {
-                    override fun onPermissionsChecked(multiplePermissionsReport: MultiplePermissionsReport) {
-                        // this method is called when all permissions are granted
-                        if (multiplePermissionsReport.areAllPermissionsGranted()) {
-                            // do you work now
-                            Toast.makeText(binding.root.context, "Barcha ruxsatlar berilgan..", Toast.LENGTH_SHORT).show()
+        return contacts
+    }
+
+    fun getContactNumbers(contactId: String): List<String> {
+        val numbers = mutableListOf<String>()
+        val contentResolver: ContentResolver = binding.root.context.contentResolver
+        val phoneCursor: Cursor? = contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            null,
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+            arrayOf(contactId),
+            null
+        )
+
+        if (phoneCursor != null && phoneCursor.count > 0) {
+            while (phoneCursor.moveToNext()) {
+                val phoneNumber =
+                    phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                numbers.add(phoneNumber)
+            }
+            phoneCursor.close()
+        }
+
+        return numbers
+    }
+    fun checkReadContactsPermission(context: Context): Boolean {
+        val permission = android.Manifest.permission.READ_CONTACTS
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+    private fun requestPermissions() {
+        // pastdagi satr joriy faoliyatda ruxsat so'rash uchun ishlatiladi.
+        // bu usul ish vaqti ruxsatnomalarida xatoliklarni hal qilish uchun ishlatiladi
+        Dexter.withContext(binding.root.context)
+            // pastdagi satr ilovamizda talab qilinadigan ruxsatlar sonini so'rash uchun ishlatiladi.
+            .withPermissions(android.Manifest.permission.WRITE_CONTACTS,
+                // quyida ruxsatlar ro'yxati
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.READ_CONTACTS,
+                android.Manifest.permission.SEND_SMS,
+                android.Manifest.permission.CALL_PHONE)
+            // ruxsatlarni qo'shgandan so'ng biz tinglovchi bilan usulni chaqiramiz.
+            .withListener(object : MultiplePermissionsListener {
+                override fun onPermissionsChecked(multiplePermissionsReport: MultiplePermissionsReport) {
+                    // bu usul barcha ruxsatlar berilganda chaqiriladi
+                    if (multiplePermissionsReport.areAllPermissionsGranted()) {
+                        // hozir ishlayapsizmi
+                        Toast.makeText(binding.root.context, "Barcha ruxsatlar berilgan..", Toast.LENGTH_SHORT).show()
+
+                        if (checkReadContactsPermission(binding.root.context)) {
+                            list.addAll(getContacts())
+                            adapterrv.notifyDataSetChanged()
+                            // Ruxsat berilgan, kontakt ma'lumotlariga kirishingiz mumkin
+                            // Kerakli harakatlar tugallanishi uchun shu yerga kod yozing
                         }
-                        // check for permanent denial of any permission
-                        if (multiplePermissionsReport.isAnyPermissionPermanentlyDenied) {
-                            // permission is denied permanently, we will show user a dialog message.
-                            showSettingsDialog()
-                        }
-                    }
 
-                    override fun onPermissionRationaleShouldBeShown(list: List<PermissionRequest>, permissionToken: PermissionToken) {
-                        // this method is called when user grants some permission and denies some of them.
-                        permissionToken.continuePermissionRequest()
                     }
-                }).withErrorListener {
-                    // we are displaying a toast message for error message.
-                    Toast.makeText(binding.root.context, "Error occurred! ", Toast.LENGTH_SHORT).show()
+                    // har qanday ruxsatni doimiy ravishda rad etishni tekshiring
+                    if (multiplePermissionsReport.isAnyPermissionPermanentlyDenied) {
+                        // ruxsat butunlay rad etilgan, biz foydalanuvchiga dialog xabarini ko'rsatamiz.
+                        showSettingsDialog()
+                    }
                 }
-                // below line is use to run the permissions on same thread and to check the permissions
-                .onSameThread().check()
-        }
 
-        // below is the shoe setting dialog method
-        // which is use to display a dialogue message.
-        private fun showSettingsDialog() {
-            // we are displaying an alert dialog for permissions
-            val builder = AlertDialog.Builder(binding.root.context)
-
-            // below line is the title for our alert dialog.
-            builder.setTitle("Need Permissions")
-
-            // below line is our message for our dialog
-            builder.setMessage("This app needs permission to use this feature. You can grant them in app settings.")
-            builder.setPositiveButton("GOTO SETTINGS") { dialog, which ->
-                // this method is called on click on positive button and on clicking shit button
-                // we are redirecting our user from our app to the settings page of our app.
-                dialog.cancel()
-                // below is the intent from which we are redirecting our user.
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                val uri = Uri.fromParts("package", null, "HomFragment")
-                intent.data = uri
-                startActivityForResult(intent, 101)
+                override fun onPermissionRationaleShouldBeShown(list: List<PermissionRequest>, permissionToken: PermissionToken) {
+                    // foydalanuvchi ba'zi ruxsatlarni berib, ba'zilarini rad qilganda bu usul chaqiriladi.
+                    permissionToken.continuePermissionRequest()
+                }
+            }).withErrorListener {
+                // biz xato xabari uchun tost xabarini ko'rsatmoqdamiz.
+                Toast.makeText(binding.root.context, "Error occurred! ", Toast.LENGTH_SHORT).show()
             }
-            builder.setNegativeButton("Cancel") { dialog, which ->
-                // this method is called when user click on negative button.
-                dialog.cancel()
-            }
-            // below line is used to display our dialog
-            builder.show()
+            // pastdagi satr bir xil mavzudagi ruxsatlarni ishga tushirish va ruxsatlarni tekshirish uchun ishlatiladi
+            .onSameThread().check()
+
+    }
+
+    // quyida poyabzal sozlash dialog usuli
+    // dialog xabarini ko'rsatish uchun ishlatiladi.
+    private fun showSettingsDialog() {
+        // biz ruxsatlar uchun ogohlantirish dialogini ko'rsatmoqdamiz
+        val builder = AlertDialog.Builder(binding.root.context)
+
+        // pastdagi satr ogohlantirish dialogining sarlavhasidir.
+        builder.setTitle("Need Permissions")
+
+        // pastdagi satr bizning muloqotimiz uchun xabardir
+        builder.setMessage("This app needs permission to use this feature. You can grant them in app settings.")
+        builder.setPositiveButton("GOTO SETTINGS") { dialog, which ->
+            // bu usul musbat tugmani bosganda va shit tugmasini bosganda chaqiriladi
+            // biz foydalanuvchini ilovamizdan ilovamiz sozlamalari sahifasiga yo'naltirmoqdamiz.
+            dialog.cancel()
+            // quyida biz foydalanuvchini qayta yo'naltirish niyatimiz.
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            val uri = Uri.fromParts("package", null, "HomFragment")
+            intent.data = uri
+            startActivityForResult(intent, 101)
         }
+        builder.setNegativeButton("Cancel") { dialog, which ->
+            // bu usul foydalanuvchi salbiy tugmani bosganda chaqiriladi.
+            dialog.cancel()
+        }
+        // dialog oynamizni ko'rsatish uchun quyidagi qatordan foydalaniladi
+        builder.show()
+    }
+
+
+
+
+
+
+
+
 
 
     companion object {

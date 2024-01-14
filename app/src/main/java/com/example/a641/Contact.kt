@@ -1,6 +1,8 @@
 package com.example.a641
 
-class Contact {
+import java.io.Serializable
+
+class Contact : Serializable {
 
     var id:Int?=null
     var phone_name:String?=null

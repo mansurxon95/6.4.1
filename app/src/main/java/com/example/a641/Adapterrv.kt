@@ -1,5 +1,6 @@
 package com.example.a641
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -35,8 +36,9 @@ class Adapterrv(var onClik: OnClik): ListAdapter<Contact, Adapterrv.VH>(MyDiffUt
                 return  oldItem.id == newItem.id
             }
 
+            @SuppressLint("DiffUtilEquals")
             override fun areContentsTheSame(oldItem: Contact, newItem: Contact): Boolean {
-                return  oldItem.equals(newItem)
+                return oldItem == newItem
             }
         }
 
